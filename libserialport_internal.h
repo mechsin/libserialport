@@ -133,6 +133,7 @@
 
 struct sp_port {
 	char *name;
+	char *realname;
 	char *description;
 	enum sp_transport transport;
 	int usb_bus;

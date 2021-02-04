@@ -52,6 +52,11 @@ SP_PRIV enum sp_return get_port_details(struct sp_port *port)
 	int i, count;
 	struct stat statbuf;
 
+	if (port->realname) {
+		dev = port->realname + 5;
+	} else {
+		dev = port->name + 5;
+	}
 	if (strncmp(port->name, "/dev/", 5))
 		RETURN_ERROR(SP_ERR_ARG, "Device name not recognized");
 

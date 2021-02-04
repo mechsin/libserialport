@@ -73,6 +73,9 @@ SP_API enum sp_return sp_get_port_by_name(const char *portname, struct sp_port *
 
 	DEBUG_FMT("Building structure for port %s", portname);
 
+	if (!(port = malloc(sizeof(struct sp_port))))
+		RETURN_ERROR(SP_ERR_MEM, "Port structure malloc failed");
+
 #if !defined(_WIN32) && defined(HAVE_REALPATH)
 	/*
 	 * get_port_details() below tries to be too smart and figure out
@@ -81,14 +84,28 @@ SP_API enum sp_return sp_get_port_by_name(const char *portname, struct sp_port *
 	 */
 	char pathbuf[PATH_MAX + 1];
 	char *res = realpath(portname, pathbuf);
-	if (!res)
+	if (!res) {
+		free(port);
 		RETURN_ERROR(SP_ERR_ARG, "Could not retrieve realpath behind port name");
+	}
 
-	portname = pathbuf;
+	// If the portname and pathbuf this isn't a symlink and real name
+	// is set to NULL if not though we fill the real path field with
+	// with the path to the real device
+	if (strcmp(portname, pathbuf) == 0) {
+		port->realname = NULL;
+	} else {
+		len = strlen(pathbuf) + 1;
+		if (!(port->realname = malloc(len))) {
+			free(port);
+			RETURN_ERROR(SP_ERR_MEM, "Port real name malloc failed");
+		}
+		memcpy(port->realname, pathbuf, len);
+	}
+#else
+	port->realname = NULL;
 #endif
 
-	if (!(port = malloc(sizeof(struct sp_port))))
-		RETURN_ERROR(SP_ERR_MEM, "Port structure malloc failed");
 
 	len = strlen(portname) + 1;
 
@@ -294,6 +311,8 @@ SP_API void sp_free_port(struct sp_port *port)
 
 	if (port->name)
 		free(port->name);
+	if (port->realname)
+		free(port->realname);
 	if (port->description)
 		free(port->description);
 	if (port->usb_manufacturer)
